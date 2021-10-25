@@ -1,0 +1,1386 @@
+openapi: 3.0.0
+info:
+  title: Moolah API
+  description: Moolah Example BaaS API
+  contact:
+    email: michaelcdaley@gmail.com
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.0
+servers:
+- url: https://virtserver.swaggerhub.com/mcdaley4/Moolah/1.0.0
+  description: SwaggerHub API Auto Mocking
+security:
+- BearerAuth: []
+- OAuth2:
+  - read
+  - write
+tags:
+- name: admins
+  description: Secured Admin-only calls
+- name: developers
+  description: Operations available to regular developers
+- name: accounts
+  description: Account APIs
+- name: blocks
+  description: Account Block APIs
+- name: transactions
+  description: Transaction APIs
+paths:
+  /accounts:
+    get:
+      tags:
+      - accounts
+      summary: Return list of accounts
+      description: Returns a list of all a users checking and savings accounts.
+      operationId: accountsGET
+      parameters:
+      - name: page
+        in: query
+        description: "The page of results to return, default is the first page"
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: number
+          format: int32
+          example: 2
+      - name: page_size
+        in: query
+        description: The number of results to return for the page. The default page
+          size is 25 and the max is 50
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: number
+          format: int32
+          example: 20
+      - name: sort
+        in: query
+        description: Sort results in ascending or descending order
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+          example: sort=asc
+          enum:
+          - asc
+          - desc
+      - name: sort_field
+        in: query
+        description: Account attribute used to sort the accounts. The default sort
+          field is the account type.
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+          enum:
+          - name
+          - nickname
+          - available_balance
+          - account_type
+      - name: X-UserId
+        in: header
+        description: User ID token
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountList'
+        "401":
+          description: User was unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 401
+                message: User was not authenticated
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 404
+                message: Server error
+      x-swagger-router-controller: Accounts
+    post:
+      tags:
+      - accounts
+      summary: Create a bank account
+      description: Creates a checking or savings account for a registered user and
+        sets the opening balance to $0.
+      operationId: accountsPOST
+      parameters:
+      - name: X-Request_Id
+        in: header
+        description: Unique client provided ID for the API request
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: uuid
+          example: a455f1ee-6c54-4b01-90e6-d701748f0851
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountCreateParams'
+        required: true
+      responses:
+        "201":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountDetails'
+        "400":
+          description: API request had an invalid resource identifier or invalid request
+            body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 400
+                message: "Invalid resource id, invalid request body"
+        "401":
+          description: User was unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 401
+                message: User was not authenticated
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 404
+                message: Server error
+      x-swagger-router-controller: Accounts
+  /accounts/{account_id}:
+    get:
+      tags:
+      - accounts
+      summary: Returns a bank account
+      description: Return the account details for a single user's bank account.
+      operationId: accountsAccount_idGET
+      parameters:
+      - name: account_id
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: uuid
+          example: d290f1ee-6c54-4b01-90e6-d701748f0851
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountDetails'
+        "400":
+          description: API request had an invalid resource identifier or invalid request
+            body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 400
+                message: "Invalid resource id, invalid request body"
+        "401":
+          description: User was unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 401
+                message: User was not authenticated
+        "403":
+          description: User does not have access to the resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 403
+                message: Access to resource is forbidden
+        "404":
+          description: The specified resource was not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 404
+                message: Resource Not Found
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 404
+                message: Server error
+      x-swagger-router-controller: Accounts
+    put:
+      tags:
+      - accounts
+      summary: Edit a bank account
+      description: Edit certain fields of the bank account
+      operationId: accountsAccount_idPUT
+      parameters:
+      - name: account_id
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: uuid
+          example: d290f1ee-6c54-4b01-90e6-d701748f0851
+      - name: X-Request_Id
+        in: header
+        description: Unique client provided ID for the API request
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: uuid
+          example: a455f1ee-6c54-4b01-90e6-d701748f0851
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountUpdateParams'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        "400":
+          description: API request had an invalid resource identifier or invalid request
+            body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 400
+                message: "Invalid resource id, invalid request body"
+        "401":
+          description: User was unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 401
+                message: User was not authenticated
+        "403":
+          description: User does not have access to the resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 403
+                message: Access to resource is forbidden
+        "404":
+          description: The specified resource was not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 404
+                message: Resource Not Found
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 404
+                message: Server error
+      x-swagger-router-controller: Accounts
+  /accounts/{account_id}/blocks:
+    get:
+      tags:
+      - blocks
+      summary: Return list of account blocks
+      description: Returns all of the account blocks ever assigned to an account sorted
+        by descending created at date.
+      operationId: accountsAccount_idBlocksGET
+      parameters:
+      - name: account_id
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: uuid
+          example: d290f1ee-6c54-4b01-90e6-d701748f0851
+      - name: page
+        in: query
+        description: "The page of results to return, default is the first page"
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: number
+          format: int32
+          example: 2
+      - name: page_size
+        in: query
+        description: The number of results to return for the page. The default page
+          size is 25 and the max is 50
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: number
+          format: int32
+          example: 20
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BlockList'
+        "400":
+          description: API request had an invalid resource identifier or invalid request
+            body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 400
+                message: "Invalid resource id, invalid request body"
+        "401":
+          description: User was unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 401
+                message: User was not authenticated
+        "403":
+          description: User does not have access to the resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 403
+                message: Access to resource is forbidden
+        "404":
+          description: The specified resource was not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 404
+                message: Resource Not Found
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 404
+                message: Server error
+      x-swagger-router-controller: Blocks
+    post:
+      tags:
+      - blocks
+      summary: Add a block to a bank account
+      description: Add a block to a checking or savings account when there  is suspected
+        fraud on the account. Adding a block also updates the status of the account
+        to blocked.
+      operationId: accountsAccount_idBlocksPOST
+      parameters:
+      - name: account_id
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: uuid
+          example: d290f1ee-6c54-4b01-90e6-d701748f0851
+      - name: X-Request_Id
+        in: header
+        description: Unique client provided ID for the API request
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: uuid
+          example: a455f1ee-6c54-4b01-90e6-d701748f0851
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BlockParams'
+        required: true
+      responses:
+        "201":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BlockDetails'
+        "400":
+          description: API request had an invalid resource identifier or invalid request
+            body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 400
+                message: "Invalid resource id, invalid request body"
+        "401":
+          description: User was unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 401
+                message: User was not authenticated
+        "404":
+          description: The specified resource was not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 404
+                message: Resource Not Found
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 404
+                message: Server error
+      x-swagger-router-controller: Blocks
+  /accounts/{account_id}/blocks/{block_id}:
+    delete:
+      tags:
+      - blocks
+      summary: Remove a block on an account
+      description: Cancels an active block on an account and updates the account status
+        to active from blocked. When a block is cancelled it creates a new account
+        block with the status of Cancelled.
+      operationId: accountsAccount_idBlocksBlock_idDELETE
+      parameters:
+      - name: account_id
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: uuid
+          example: d290f1ee-6c54-4b01-90e6-d701748f0851
+      - name: block_id
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: uuid
+          example: e340f1ee-6c54-4b01-90e6-d701748f0851
+      - name: X-Request_Id
+        in: header
+        description: Unique client provided ID for the API request
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: uuid
+          example: a455f1ee-6c54-4b01-90e6-d701748f0851
+      responses:
+        "204":
+          description: OK
+        "400":
+          description: API request had an invalid resource identifier or invalid request
+            body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 400
+                message: "Invalid resource id, invalid request body"
+        "401":
+          description: User was unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 401
+                message: User was not authenticated
+        "403":
+          description: User does not have access to the resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 403
+                message: Access to resource is forbidden
+        "404":
+          description: The specified resource was not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 404
+                message: Resource Not Found
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 404
+                message: Server error
+      x-swagger-router-controller: Blocks
+  /accounts/{account_id}/transactions:
+    get:
+      tags:
+      - transactions
+      summary: Get list of transactions for an account
+      description: Fetch a list of transactions for an account by default the transactions
+        will be sorted by descending date order with a limit of 25 transactions returned.
+      operationId: accountsAccount_idTransactionsGET
+      parameters:
+      - name: account_id
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: uuid
+          example: d290f1ee-6c54-4b01-90e6-d701748f0851
+      - name: page
+        in: query
+        description: "The page of results to return, default is the first page"
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: number
+          format: int32
+          example: 2
+      - name: page_size
+        in: query
+        description: The number of results to return for the page. The default page
+          size is 25 and the max is 50
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: number
+          format: int32
+          example: 20
+      - name: sort
+        in: query
+        description: Sort results in ascending or descending order
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+          example: sort=asc
+          enum:
+          - asc
+          - desc
+      - name: sort_field
+        in: query
+        description: "Field to sort transactions, default is date in descending order."
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: string
+          enum:
+          - date
+          - description
+          - amount
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionList'
+        "400":
+          description: API request had an invalid resource identifier or invalid request
+            body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 400
+                message: "Invalid resource id, invalid request body"
+        "401":
+          description: User was unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 401
+                message: User was not authenticated
+        "403":
+          description: User does not have access to the resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 403
+                message: Access to resource is forbidden
+        "404":
+          description: The specified resource was not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 404
+                message: Resource Not Found
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 404
+                message: Server error
+      x-swagger-router-controller: Transactions
+    post:
+      tags:
+      - transactions
+      summary: Create a new transaction
+      description: Creates a new transaction to an account and updates the account's
+        posted and available balances.
+      operationId: accountsAccount_idTransactionsPOST
+      parameters:
+      - name: account_id
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: uuid
+          example: d290f1ee-6c54-4b01-90e6-d701748f0851
+      - name: X-Request_Id
+        in: header
+        description: Unique client provided ID for the API request
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          format: uuid
+          example: a455f1ee-6c54-4b01-90e6-d701748f0851
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionParams'
+      responses:
+        "201":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionDetails'
+        "400":
+          description: API request had an invalid resource identifier or invalid request
+            body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 400
+                message: "Invalid resource id, invalid request body"
+        "401":
+          description: User was unauthenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 401
+                message: User was not authenticated
+        "403":
+          description: User does not have access to the resource
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 403
+                message: Access to resource is forbidden
+        "404":
+          description: The specified resource was not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 404
+                message: Resource Not Found
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: 404
+                message: Server error
+      x-swagger-router-controller: Transactions
+  /subscribe:
+    post:
+      tags:
+      - notifications
+      summary: Subscribe to a webhook
+      description: Subscribe to receive notifications via webhooks. User provides
+        the callback to receive the webhooks and which notifications they want to
+        receive.
+      operationId: subscribePOST
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/subscribe_body'
+        required: true
+      responses:
+        "201":
+          description: Webhook created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/inline_response_201'
+          links:
+            subscriberId:
+              operationId: unsubscribeOperation
+              parameters:
+                subscriberId: $request.body#/subscriberId
+              description: |
+                The `subscriberId` in the response is used to unsubscribe to notifications in the `POST /unsubscribe`
+      callbacks:
+        myEvent:
+          $request.body#/callbackUrl:
+            post:
+              requestBody:
+                content:
+                  application/json:
+                    schema:
+                      required:
+                      - message
+                      type: object
+                      properties:
+                        notification:
+                          type: string
+                          example: Transaction
+                          enum:
+                          - Account
+                          - Block
+                          - Transaction
+                        subject:
+                          type: string
+                          example: Transaction posted to account
+                        message:
+                          type: string
+                          example: "Dude, some event happened"
+                required: true
+              responses:
+                "200":
+                  description: Your server accepted the callback
+      x-swagger-router-controller: Notifications
+  /unsubscribe/{subscriberId}:
+    post:
+      tags:
+      - notifications
+      summary: Unscribe from notifications
+      description: |
+        Unsubscribe from receiving notifications using the subscribe Id returned in the `POST /subscribe` API.
+      operationId: unsubscribeOperation
+      parameters:
+      - name: subscriberId
+        in: path
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+      responses:
+        "204":
+          description: Unsubscribed
+      x-swagger-router-controller: Notifications
+components:
+  schemas:
+    AccountDetails:
+      type: object
+      properties:
+        account:
+          $ref: '#/components/schemas/Account'
+      example:
+        account:
+          account_number: account_number
+          account_type: Checking
+          created_at: 2000-01-23T04:56:07.000+00:00
+          routing_number: routing_number
+          available_balance: 0.80082819046101150206595775671303272247314453125
+          posted_balance: 6.02745618307040320615897144307382404804229736328125
+          updated_at: 2000-01-23T04:56:07.000+00:00
+          user_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          name: My Checking Account
+          nickname: Moolah
+          currency: USD
+          id: d290f1ee-6c54-4b01-90e6-d701748f0851
+          opening_date: 2000-01-23
+          status: Active
+    AccountList:
+      type: object
+      properties:
+        totalCount:
+          format: int32
+        accounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Account'
+      example:
+        accounts:
+        - account_number: account_number
+          account_type: Checking
+          created_at: 2000-01-23T04:56:07.000+00:00
+          routing_number: routing_number
+          available_balance: 0.80082819046101150206595775671303272247314453125
+          posted_balance: 6.02745618307040320615897144307382404804229736328125
+          updated_at: 2000-01-23T04:56:07.000+00:00
+          user_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          name: My Checking Account
+          nickname: Moolah
+          currency: USD
+          id: d290f1ee-6c54-4b01-90e6-d701748f0851
+          opening_date: 2000-01-23
+          status: Active
+        - account_number: account_number
+          account_type: Checking
+          created_at: 2000-01-23T04:56:07.000+00:00
+          routing_number: routing_number
+          available_balance: 0.80082819046101150206595775671303272247314453125
+          posted_balance: 6.02745618307040320615897144307382404804229736328125
+          updated_at: 2000-01-23T04:56:07.000+00:00
+          user_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          name: My Checking Account
+          nickname: Moolah
+          currency: USD
+          id: d290f1ee-6c54-4b01-90e6-d701748f0851
+          opening_date: 2000-01-23
+          status: Active
+        totalCount: ""
+    AccountCreateParams:
+      type: object
+      properties:
+        name:
+          maxLength: 64
+          minLength: 4
+          type: string
+          example: My Checking Account
+        account_type:
+          type: string
+          example: Checking
+          enum:
+          - Checking
+          - Savings
+    AccountUpdateParams:
+      type: object
+      properties:
+        name:
+          maxLength: 64
+          minLength: 4
+          type: string
+          example: My Checking Account
+        nickname:
+          maxLength: 64
+          minLength: 4
+          type: string
+          example: Moolah
+    Account:
+      required:
+      - account_number
+      - account_type
+      - available_balance
+      - currency
+      - id
+      - opening_date
+      - posted_balance
+      - routing_number
+      - status
+      - user_id
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: d290f1ee-6c54-4b01-90e6-d701748f0851
+        account_number:
+          pattern: "^\\d{3}-\\d{2}-\\d{4}$"
+          type: string
+        routing_number:
+          pattern: "^d{9}$"
+          type: string
+        account_type:
+          type: string
+          enum:
+          - Checking
+          - Savings
+        name:
+          maxLength: 64
+          minLength: 4
+          type: string
+          example: My Checking Account
+        nickname:
+          maxLength: 64
+          minLength: 4
+          type: string
+          example: Moolah
+        available_balance:
+          type: number
+          format: double
+        posted_balance:
+          type: number
+          format: double
+        status:
+          type: string
+          enum:
+          - Active
+          - Blocked
+          - Closed
+          - Dormant
+          - Abandoned
+          - Escheated
+          - Chargeoff
+        opening_date:
+          type: string
+          format: date
+        currency:
+          type: string
+          enum:
+          - USD
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        user_id:
+          type: string
+          format: uuid
+      example:
+        account_number: account_number
+        account_type: Checking
+        created_at: 2000-01-23T04:56:07.000+00:00
+        routing_number: routing_number
+        available_balance: 0.80082819046101150206595775671303272247314453125
+        posted_balance: 6.02745618307040320615897144307382404804229736328125
+        updated_at: 2000-01-23T04:56:07.000+00:00
+        user_id: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        name: My Checking Account
+        nickname: Moolah
+        currency: USD
+        id: d290f1ee-6c54-4b01-90e6-d701748f0851
+        opening_date: 2000-01-23
+        status: Active
+    BlockDetails:
+      type: object
+      properties:
+        block:
+          $ref: '#/components/schemas/Block'
+      example:
+        block: ""
+    BlockList:
+      type: object
+      properties:
+        total_count:
+          type: number
+          format: int32
+        blocks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Block'
+      example:
+        total_count: 0.80082819046101150206595775671303272247314453125
+        blocks:
+        - ""
+        - ""
+    Block:
+      allOf:
+      - $ref: '#/components/schemas/BlockParams'
+      - type: object
+        properties:
+          id:
+            type: string
+            format: uuid
+          createdAt:
+            type: string
+            format: date-time
+            example: 2021-10-12T09:12:33.001Z
+    BlockParams:
+      required:
+      - accountId
+      - block_reason
+      - block_status
+      - block_type
+      type: object
+      properties:
+        accountId:
+          type: string
+          format: uuid
+        block_status:
+          type: string
+          example: Active
+          enum:
+          - Active
+          - Cancelled
+        block_type:
+          type: string
+          example: Debits
+          enum:
+          - Debits
+          - Credits
+          - Checks
+          - All
+        block_reason:
+          type: string
+          example: Customer reported fraud
+        cancelledAt:
+          type: string
+          format: date-time
+          example: 2021-10-15T09:14:00.001Z
+    TransactionDetails:
+      type: object
+      properties:
+        transaction:
+          $ref: '#/components/schemas/Transaction'
+      example:
+        transaction: ""
+    TransactionList:
+      type: object
+      properties:
+        total_count:
+          type: number
+          format: int32
+          example: 1
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transaction'
+      example:
+        total_count: 1
+        transactions:
+        - ""
+        - ""
+    Transaction:
+      allOf:
+      - $ref: '#/components/schemas/TransactionParams'
+      - required:
+        - id
+        type: object
+        properties:
+          id:
+            type: string
+            format: uuid
+          postedBalance:
+            type: number
+            format: float
+          createdAt:
+            type: string
+            format: date-time
+            example: 2021-10-12T09:12:33.001Z
+          updatedAt:
+            type: string
+            format: date-time
+            example: 2021-10-12T09:12:33.001Z
+    TransactionParams:
+      required:
+      - account_id
+      - amount
+      - currency
+      - date
+      - description
+      - status
+      - type
+      type: object
+      properties:
+        status:
+          type: string
+          example: Posted
+          enum:
+          - Posted
+          - Refunded
+          - Declined
+        type:
+          type: string
+          example: Purchase
+          enum:
+          - Purchase
+          - CashWithdrawal
+          - TransferCredit
+          - CashDeposit
+          - TransferDebit
+          - Refund
+          - Miscellaneous
+        description:
+          type: string
+          example: Target
+        date:
+          type: string
+          format: date-time
+          example: 2021-10-17T09:14:00.001Z
+        amount:
+          type: number
+          format: float
+          example: 55.34
+        currency:
+          type: string
+          example: USD
+          enum:
+          - USD
+        account_id:
+          type: string
+          format: uuid
+          example: d290f1ee-6c54-4b01-90e6-d701748f0851
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+    subscribe_body:
+      required:
+      - callbackUrl
+      type: object
+      properties:
+        notifications:
+          type: array
+          items:
+            type: string
+            example: "[\"Account\",\"Transaction\"]"
+            enum:
+            - Account
+            - Blocks
+            - Transaction
+        callbackUrl:
+          type: string
+          format: uri
+          example: https://client-server.com/send/callback/here
+    inline_response_201:
+      properties:
+        subscriberId:
+          type: string
+          example: AAA-123-BBB-456
+      example:
+        subscriberId: AAA-123-BBB-456
+  responses:
+    "400BadRequest":
+      description: API request had an invalid resource identifier or invalid request
+        body
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: 400
+            message: "Invalid resource id, invalid request body"
+    "401Unauthorized":
+      description: User was unauthenticated
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: 401
+            message: User was not authenticated
+    "403Forbidden":
+      description: User does not have access to the resource
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: 403
+            message: Access to resource is forbidden
+    "404NotFound":
+      description: The specified resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: 404
+            message: Resource Not Found
+    "500ServerError":
+      description: Server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: 404
+            message: Server error
+  parameters:
+    accountId:
+      name: account_id
+      in: path
+      required: true
+      style: simple
+      explode: false
+      schema:
+        type: string
+        format: uuid
+        example: d290f1ee-6c54-4b01-90e6-d701748f0851
+    blockId:
+      name: block_id
+      in: path
+      required: true
+      style: simple
+      explode: false
+      schema:
+        type: string
+        format: uuid
+        example: e340f1ee-6c54-4b01-90e6-d701748f0851
+    transactionId:
+      name: transaction_id
+      in: path
+      required: true
+      style: simple
+      explode: false
+      schema:
+        type: string
+        format: uuid
+        example: a455f1ee-6c54-4b01-90e6-d701748f0851
+    requestId:
+      name: X-Request_Id
+      in: header
+      description: Unique client provided ID for the API request
+      required: true
+      style: simple
+      explode: false
+      schema:
+        type: string
+        format: uuid
+        example: a455f1ee-6c54-4b01-90e6-d701748f0851
+    page:
+      name: page
+      in: query
+      description: "The page of results to return, default is the first page"
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: number
+        format: int32
+        example: 2
+    pageSize:
+      name: page_size
+      in: query
+      description: The number of results to return for the page. The default page
+        size is 25 and the max is 50
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: number
+        format: int32
+        example: 20
+    sort:
+      name: sort
+      in: query
+      description: Sort results in ascending or descending order
+      required: false
+      style: form
+      explode: true
+      schema:
+        type: string
+        example: sort=asc
+        enum:
+        - asc
+        - desc
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    OAuth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://moolah.com/oauth/authorize
+          tokenUrl: https://moolah.com/oauth/token
+          scopes:
+            read: Grants read access to resources
+            write: Grants write access to resources
+            admin: Grants access to admin operations
